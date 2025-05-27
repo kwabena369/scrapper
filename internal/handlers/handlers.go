@@ -2,17 +2,19 @@
 package handlers
 
 import (
-    "context"
-    "encoding/json"
-    "log"
-    "net/http"
-    "time"
+	"context"
+	"encoding/json"
+	"log"
+	"net/http"
+	"strings"
+	"time"
 
-    "github.com/gorilla/mux"
-    "github.com/kwabena369/scrapper/internal/models"
-    "go.mongodb.org/mongo-driver/bson"
-    "go.mongodb.org/mongo-driver/bson/primitive"
-    "go.mongodb.org/mongo-driver/mongo"
+	"github.com/gorilla/mux"
+	"github.com/kwabena369/scrapper/internal/db"
+	"github.com/kwabena369/scrapper/internal/models"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 func RespondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
@@ -41,10 +43,25 @@ func TheLoggingMiddleware(next http.Handler) http.Handler {
     })
 }
 
+
+
 func CreateUser(client *mongo.Client) http.HandlerFunc {
     return func(w http.ResponseWriter, r *http.Request) {
+        // Extract token from Authorization header (e.g., "Bearer <token>")
+        authHeader := r.Header.Get("Authorization")
+        if authHeader == "" {
+            RespondWithError(w, http.StatusUnauthorized, "No token provided")
+            return
+        }
+        tokenStr := strings.TrimPrefix(authHeader, "Bearer ")
+        _, err := db.AuthClient.VerifyIDToken(context.Background(), tokenStr)
+        if err != nil {
+            RespondWithError(w, http.StatusUnauthorized, "Invalid token")
+            return
+        }
+
         var user models.User
-        if err := json.NewDecoder(r.Body).Decode(&user); err != nil { // Fixed decoding
+        if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
             RespondWithError(w, http.StatusBadRequest, "Invalid input")
             return
         }
@@ -53,7 +70,7 @@ func CreateUser(client *mongo.Client) http.HandlerFunc {
         ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
         defer cancel()
 
-        _, err := collection.InsertOne(ctx, user)
+        _, err = collection.InsertOne(ctx, user)
         if err != nil {
             RespondWithError(w, http.StatusInternalServerError, "Failed to create user")
             return
