@@ -5,7 +5,7 @@ import (
     "net/http"
     "os"
 
-    gorillaHandlers "github.com/gorilla/handlers"
+    ghandlers "github.com/gorilla/handlers"
     "github.com/gorilla/mux"
     "github.com/joho/godotenv"
     "github.com/kwabena369/scrapper/internal/db"
@@ -31,17 +31,38 @@ func main() {
 
     routerV1 := router.PathPrefix("/v1").Subrouter()
     client := db.Client
+
+    // Public route
     routerV1.HandleFunc("/users", handlers.CreateUser(client)).Methods("POST")
-    routerV1.HandleFunc("/users/{id}", handlers.GetUser(client)).Methods("GET")
-    routerV1.HandleFunc("/users/{id}", handlers.UpdateUser(client)).Methods("PUT")
-    routerV1.HandleFunc("/users/{id}", handlers.DeleteUser(client)).Methods("DELETE")
+
+    // Protected routes
+    protected := routerV1.PathPrefix("/users").Subrouter()
+    protected.Use(handlers.AuthMiddleware)
+    protected.HandleFunc("/{id}", handlers.GetUser(client)).Methods("GET")
+    protected.HandleFunc("/{id}", handlers.UpdateUser(client)).Methods("PUT")
+    protected.HandleFunc("/{id}", handlers.DeleteUser(client)).Methods("DELETE")
+
+    // Feed CRUD routes
+    feedProtected := routerV1.PathPrefix("/feeds").Subrouter()
+    feedProtected.Use(handlers.AuthMiddleware)
+    feedProtected.HandleFunc("", handlers.CreateFeed(client)).Methods("POST")
+    feedProtected.HandleFunc("/{id}", handlers.GetFeed(client)).Methods("GET")
+    feedProtected.HandleFunc("/{id}", handlers.UpdateFeed(client)).Methods("PUT")
+    feedProtected.HandleFunc("/{id}", handlers.DeleteFeed(client)).Methods("DELETE")
+    feedProtected.HandleFunc("", handlers.GetAllFeeds(client)).Methods("GET")
+
+    // FeedFollower routes
+    followerProtected := routerV1.PathPrefix("/feed-followers").Subrouter()
+    followerProtected.Use(handlers.AuthMiddleware)
+    followerProtected.HandleFunc("", handlers.FollowFeed(client)).Methods("POST")
+    followerProtected.HandleFunc("/{id}", handlers.UnfollowFeed(client)).Methods("DELETE")
 
     // Add CORS middleware
-    corsHandler := gorillaHandlers.CORS(
-        gorillaHandlers.AllowedOrigins([]string{"http://localhost:3002"}), // Frontend origin
-        gorillaHandlers.AllowedMethods([]string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}),
-        gorillaHandlers.AllowedHeaders([]string{"Content-Type", "Authorization"}),
-        gorillaHandlers.AllowCredentials(),
+    corsHandler := ghandlers.CORS(
+        ghandlers.AllowedOrigins([]string{"http://localhost:3000"}), // Adjust if needed
+        ghandlers.AllowedMethods([]string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}),
+        ghandlers.AllowedHeaders([]string{"Content-Type", "Authorization"}),
+        ghandlers.AllowCredentials(),
     )(router)
 
     log.Printf("Starting server on port %s", port)

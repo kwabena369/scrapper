@@ -1,5 +1,5 @@
 package db
-
+// with all the reasons we are having we can get to the core offfffffff
 import (
 	"context"
 	"log"
