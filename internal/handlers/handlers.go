@@ -14,6 +14,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+    "github.com/kwabena369/scrapper/internal/rss"
 )
 
 func RespondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
@@ -164,23 +165,39 @@ func DeleteUser(client *mongo.Client) http.HandlerFunc {
 // Feed CRUD Handlers
 func CreateFeed(client *mongo.Client) http.HandlerFunc {
     return func(w http.ResponseWriter, r *http.Request) {
+        log.Println("Received request to create feed")
+
         var feed models.Feed
         if err := json.NewDecoder(r.Body).Decode(&feed); err != nil {
+            log.Printf("Error decoding request body: %v", err)
             RespondWithError(w, http.StatusBadRequest, "Invalid input")
             return
         }
+        log.Printf("Decoded feed: %+v", feed)
+
+        // Validate required fields
+        if feed.Name == "" || feed.Url == "" || feed.UserID.IsZero() {
+            log.Println("Missing required fields in feed")
+            RespondWithError(w, http.StatusBadRequest, "Missing required fields")
+            return
+        }
+
         feed.ID = primitive.NewObjectID()
         feed.CreatedAt = time.Now()
         feed.UpdatedAt = time.Now()
+        log.Printf("Saving feed with ID: %s", feed.ID.Hex())
+
         collection := client.Database("hope").Collection("feeds")
         ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
         defer cancel()
 
         _, err := collection.InsertOne(ctx, feed)
         if err != nil {
+            log.Printf("Error saving feed to MongoDB: %v", err)
             RespondWithError(w, http.StatusInternalServerError, "Failed to create feed")
             return
         }
+        log.Println("Feed created successfully")
         RespondWithJSON(w, http.StatusCreated, feed)
     }
 }
@@ -321,4 +338,118 @@ func UnfollowFeed(client *mongo.Client) http.HandlerFunc {
         }
         RespondWithJSON(w, http.StatusOK, map[string]string{"message": "Unfollowed feed"})
     }
+}
+func ScrapeFeed(client *mongo.Client) http.HandlerFunc {
+    return func(w http.ResponseWriter, r *http.Request) {
+        id := mux.Vars(r)["id"]
+        objectID, err := primitive.ObjectIDFromHex(id)
+        if err != nil {
+            RespondWithError(w, http.StatusBadRequest, "Invalid Feed ID")
+            return
+        }
+
+        // Fetch the feed from MongoDB
+        collection := client.Database("hope").Collection("feeds")
+        ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+        defer cancel()
+
+        var feed models.Feed
+        err = collection.FindOne(ctx, bson.M{"_id": objectID}).Decode(&feed)
+        if err != nil {
+            RespondWithError(w, http.StatusNotFound, "Feed not found")
+            return
+        }
+
+        // Fetch existing items to avoid duplicates
+        itemCollection := client.Database("hope").Collection("feed_items")
+        cursor, err := itemCollection.Find(ctx, bson.M{"feed_id": objectID})
+        if err != nil {
+            RespondWithError(w, http.StatusInternalServerError, "Failed to fetch existing items")
+            return
+        }
+        defer cursor.Close(ctx)
+
+        existingLinks := make(map[string]bool)
+        var existingItems []models.FeedItem
+        if err = cursor.All(ctx, &existingItems); err != nil {
+            RespondWithError(w, http.StatusInternalServerError, "Failed to decode existing items")
+            return
+        }
+        for _, item := range existingItems {
+            existingLinks[item.Link] = true
+        }
+
+        // Scrape RSS items
+        items, err := rss.FetchRSS(feed.Url)
+        if err != nil {
+            RespondWithError(w, http.StatusInternalServerError, "Failed to scrape RSS feed: "+err.Error())
+            return
+        }
+
+        // Store new items only
+        var newItemsCount int
+        for _, item := range items {
+            if existingLinks[item.Link] {
+                continue // Skip existing items
+            }
+
+            pubDate, err := time.Parse(time.RFC1123Z, item.PubDate)
+            if err != nil {
+                log.Printf("Failed to parse pubDate for item %s: %v", item.Title, err)
+                continue
+            }
+
+            feedItem := models.FeedItem{
+                ID:          primitive.NewObjectID(),
+                FeedID:      feed.ID,
+                Title:       item.Title,
+                Link:        item.Link,
+                Description: item.Description,
+                PubDate:     pubDate,
+            }
+
+            _, err = itemCollection.InsertOne(ctx, feedItem)
+            if err != nil {
+                log.Printf("Failed to save feed item %s: %v", item.Title, err)
+                continue
+            }
+            newItemsCount++
+        }
+
+        RespondWithJSON(w, http.StatusOK, map[string]interface{}{
+            "message": "Feed scraped successfully",
+            "new_items": newItemsCount,
+        })
+    }
+}
+
+
+func GetFeedItems(client *mongo.Client) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id := mux.Vars(r)["id"]
+		objectID, err := primitive.ObjectIDFromHex(id)
+		if err != nil {
+			RespondWithError(w, http.StatusBadRequest, "Invalid Feed ID")
+			return
+		}
+
+		collection := client.Database("hope").Collection("feed_items")
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		cursor, err := collection.Find(ctx, bson.M{"feed_id": objectID})
+		if err != nil {
+			RespondWithError(w, http.StatusInternalServerError, "Failed to fetch feed items")
+			return
+		}
+		defer cursor.Close(ctx)
+
+		var items []models.FeedItem
+		if err = cursor.All(ctx, &items); err != nil {
+			RespondWithError(w, http.StatusInternalServerError, "Failed to decode feed items")
+			return
+		}
+
+		RespondWithJSON(w, http.StatusOK, items)
+	}
 }

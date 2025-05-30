@@ -50,6 +50,8 @@ func main() {
     feedProtected.HandleFunc("/{id}", handlers.UpdateFeed(client)).Methods("PUT")
     feedProtected.HandleFunc("/{id}", handlers.DeleteFeed(client)).Methods("DELETE")
     feedProtected.HandleFunc("", handlers.GetAllFeeds(client)).Methods("GET")
+    feedProtected.HandleFunc("/{id}/scrape", handlers.ScrapeFeed(client)).Methods("POST")
+    feedProtected.HandleFunc("/{id}/items", handlers.GetFeedItems(client)).Methods("GET")
 
     // FeedFollower routes
     followerProtected := routerV1.PathPrefix("/feed-followers").Subrouter()
@@ -59,7 +61,7 @@ func main() {
 
     // Add CORS middleware
     corsHandler := ghandlers.CORS(
-        ghandlers.AllowedOrigins([]string{"http://localhost:3000"}), // Adjust if needed
+        ghandlers.AllowedOrigins([]string{"http://localhost:3002"}), // Adjust if needed
         ghandlers.AllowedMethods([]string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}),
         ghandlers.AllowedHeaders([]string{"Content-Type", "Authorization"}),
         ghandlers.AllowCredentials(),

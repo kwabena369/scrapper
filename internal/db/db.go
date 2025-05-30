@@ -28,6 +28,7 @@ func ConnectMongo() {
 		log.Fatalf("Failed to connect to MongoDB: %v", err)
 	}
 
+	// from this section down there is nothing i got ...
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
@@ -75,4 +76,4 @@ func DisconnectMongo() {
 			log.Fatalf("Failed to disconnect from MongoDB: %v", err)
 		}
 	}
-}
+} 

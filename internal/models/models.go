@@ -30,3 +30,13 @@ type FeedFollower struct {
 	UserID    primitive.ObjectID `bson:"user_id" validate:"required"`
 	CreatedAt time.Time          `bson:"created_at" validate:"required"`
 }
+
+//  the storing of the items
+type FeedItem struct {
+	ID          primitive.ObjectID `bson:"_id,omitempty"`
+	FeedID      primitive.ObjectID `bson:"feed_id" validate:"required"`
+	Title       string             `bson:"title" validate:"required"`
+	Link        string             `bson:"link" validate:"required"`
+	Description string             `bson:"description"`
+	PubDate     time.Time          `bson:"pub_date" validate:"required"`
+}
