@@ -1,24 +1,59 @@
-# RSS Scraper
+# Scrapper Backend
 
-A modern RSS feed scraper and reader built with Golang, Next.js, MongoDB, and Firebase.
+This is the backend service for the Scrapper application, written in Go. It handles RSS feed scraping, storage in MongoDB, and provides a RESTful API for the frontend.
 
 ## Features
-- Add and follow RSS feeds
-- Scrape feed items and view them in a clean dashboard
-- User authentication with Firebase
-- Responsive UI with Next.js
+- Fetches and parses RSS feeds from specified URLs.
+- Stores feed items in MongoDB with deduplication based on links.
+- Provides endpoints for creating, reading, updating, and deleting feeds and their items.
+- Supports user authentication via Firebase.
+
+## Prerequisites
+- Go (1.18 or later)
+- MongoDB (local or remote instance)
+- Firebase project with Authentication enabled
 
 ## Setup
-### Backend
-1. Clone the repo: `git clone https://github.com/kwabena369/scrapper.git`
-2. Navigate to the backend: `cd scrapper`
-3. Set up `.env` with MongoDB URI and Firebase credentials
-4. Run: `go run cmd/api/main.go`
+1. Clone the repository:
+   ```
+   git clone https://github.com/kwabena369/scrapper-backend.git
+   cd scrapper-backend
+   ```
+2. Install dependencies:
+   ```
+   go mod tidy
+   ```
+3. Set up environment variables:
+   - Create a `.env` file with:
+     ```
+     MONGODB_URI=mongodb://localhost:27017
+     FIREBASE_PROJECT_ID=your-project-id
+     FIREBASE_CLIENT_EMAIL=your-client-email
+     FIREBASE_PRIVATE_KEY=your-private-key
+     ```
+   - Obtain Firebase credentials from your Firebase Console (Service Account).
+4. Run the application:
+   ```
+   go run cmd/api/main.go
+   ```
+   The server will start on `http://localhost:8080`.
 
-### Frontend
-1. Navigate to the frontend: `cd TryOut`
-2. Install dependencies: `npm install`
-3. Run: `npm run dev`
+## API Endpoints
+- `GET /v1/feeds`: List all feeds.
+- `GET /v1/feeds/:id`: Get a specific feed.
+- `POST /v1/feeds`: Create a new feed.
+- `PUT /v1/feeds/:id`: Update a feed.
+- `DELETE /v1/feeds/:id`: Delete a feed.
+- `GET /v1/feeds/:id/items`: Get items for a feed.
+- `POST /v1/feeds/:id/scrape`: Trigger scraping for a feed.
 
-## Demo
-![Demo](demo.gif)
+## Development
+- Use `go fmt` and `go vet` to maintain code quality.
+- Add tests in the `internal` package using Go’s testing framework.
+
+## Contributing
+Feel free to submit issues or pull requests. Ensure code follows Go conventions.
+
+## License
+MIT License (specify if different).
+`

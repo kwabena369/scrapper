@@ -4,6 +4,7 @@ import (
 	"encoding/xml"
 	"log"
 	"net/http"
+	"time"
 )
 
 // RSS represents the structure of an RSS feed
@@ -52,4 +53,11 @@ func FetchRSS(url string) ([]Item, error) {
 	}
 
 	return rss.Channel.Items, nil
+}
+
+// ParsePubDate parses the RSS pubDate string into a time.Time
+func ParsePubDate(pubDateStr string) (time.Time, error) {
+	// Use the correct layout for RFC1123 with GMT
+	const layout = "Mon, 02 Jan 2006 15:04:05 MST"
+	return time.Parse(layout, pubDateStr)
 }

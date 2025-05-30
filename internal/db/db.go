@@ -1,5 +1,5 @@
 package db
-// with all the reasons we are having we can get to the core offfffffff
+
 import (
 	"context"
 	"log"
@@ -17,6 +17,11 @@ import (
 var Client *mongo.Client
 var AuthClient *auth.Client
 
+type UserClaims struct {
+	UID   string
+	Email string
+}
+
 func ConnectMongo() {
 	uri := os.Getenv("MONGO_URI")
 	if uri == "" {
@@ -28,7 +33,6 @@ func ConnectMongo() {
 		log.Fatalf("Failed to connect to MongoDB: %v", err)
 	}
 
-	// from this section down there is nothing i got ...
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
@@ -44,13 +48,11 @@ func ConnectMongo() {
 func ConnectFirebase() {
 	ctx := context.Background()
 
-	// Get the path to the credentials file from an environment variable
 	credPath := os.Getenv("FIREBASE_CRED_PATH")
 	if credPath == "" {
 		log.Fatal("FIREBASE_CRED_PATH not set in .env")
 	}
 
-	// Resolve the path to an absolute path (optional but recommended)
 	absPath, err := filepath.Abs(credPath)
 	if err != nil {
 		log.Fatalf("Failed to resolve Firebase credentials path: %v", err)
@@ -73,7 +75,9 @@ func ConnectFirebase() {
 func DisconnectMongo() {
 	if Client != nil {
 		if err := Client.Disconnect(context.Background()); err != nil {
-			log.Fatalf("Failed to disconnect from MongoDB: %v", err)
+			log.Printf("Failed to disconnect from MongoDB: %v", err)
+		} else {
+			log.Println("Disconnected from MongoDB")
 		}
 	}
-} 
+}
