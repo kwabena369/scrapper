@@ -16,8 +16,8 @@ This is the backend service for the Scrapper application, written in Go. It hand
 ## Setup
 1. Clone the repository:
    ```
-   git clone https://github.com/kwabena369/scrapper-backend.git
-   cd scrapper-backend
+   git clone https://github.com/kwabena369/scrapper.git
+   cd scrapper
    ```
 2. Install dependencies:
    ```
@@ -26,10 +26,12 @@ This is the backend service for the Scrapper application, written in Go. It hand
 3. Set up environment variables:
    - Create a `.env` file with:
      ```
-     MONGODB_URI=mongodb://localhost:27017
-     FIREBASE_PROJECT_ID=your-project-id
-     FIREBASE_CLIENT_EMAIL=your-client-email
-     FIREBASE_PRIVATE_KEY=your-private-key
+   PORT=8080
+   MONGO_URI=
+   FIREBASE_CRED_PATH=
+<!-- gmail credential for sending email notifications -->
+   EMAIL_PASS=
+   EMAIL_USER=
      ```
    - Obtain Firebase credentials from your Firebase Console (Service Account).
 4. Run the application:
